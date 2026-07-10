@@ -1,0 +1,19 @@
+# macOS
+.DS_Store
+
+# secrets
+.env
+
+CLAUDE.md
+/skills
+.CLAUDE
+
+# local working docs
+DECISIONS.md
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv
+*.db
