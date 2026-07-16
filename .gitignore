@@ -3,10 +3,13 @@
 
 # secrets
 .env
+.env.*
+!.env.example
 
 CLAUDE.md
 /skills
 .CLAUDE
+.mcp.json
 
 # local working docs
 DECISIONS.md
@@ -17,3 +20,14 @@ __pycache__/
 .pytest_cache/
 .venv
 *.db
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Build output
+dist/
+*.tsbuildinfo
+# emitted by `tsc -b` via composite tsconfig.node.json
+client/vite.config.js
+client/vite.config.d.ts

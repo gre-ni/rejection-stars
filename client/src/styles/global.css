@@ -1,0 +1,396 @@
+/* ---------------------------------------------------------------------------
+   Design tokens. Components reference tokens, not raw values.
+   Values pulled from Figma variables ("Rejection Stars" file, Assets page) —
+   still draft designs, expect these to change.
+--------------------------------------------------------------------------- */
+:root {
+  --color-paper: #fffdf5; /* color/background-page */
+  --color-card: #efd4ea; /* color/background-card */
+  --color-card-border: #bf0b0b; /* color/border-card */
+  --color-star: #ffffff; /* color/star-fill */
+  --color-score: #ff0000; /* color/text-score */
+  /* color/border-hover is #ff0000 in Figma, but the hover ring is DOM (not
+     riso-printed), so we use the *printed* rendition of that red — what
+     color/text-score comes out as through the pink plate (see riso.ts tint:
+     m=1, Fluorescent Pink, boost 1.4) — to match the visible numbers. */
+  --color-border-hover: #ff0090;
+  --stroke-hover: 2px; /* stroke/weight-hover (Figma has 1 — too faint in practice) */
+  --color-gold: #ffb300; /* buttons only — the sticker is silver holo foil now */
+  --color-ink: #33302b;
+  --color-line: #d8cfbc;
+  --color-accent: #e05e3c;
+  --color-error: #b3341f;
+
+  --font-body: Georgia, "Times New Roman", serif;
+  --font-star-number: Helvetica, Arial, sans-serif; /* star-number */
+  --font-size-score: 11px; /* typography/font-size-small */
+
+  --radius: 6px;
+
+  /* Card sheet — Figma "Preview" frame + spacing variables. */
+  --star-size: 75px; /* sizing/star */
+  --card-padding: 60px; /* spacing/card-padding */
+  --card-stroke: 3px; /* stroke/weight-card (Figma had 2 — bumped per Nikol) */
+  --slot-gap-x: 40px;
+  --slot-gap-y: 32px;
+
+  /* Sheet layout: stars keep their printed size and the column count adapts
+     to the viewport (auto-fill tracks in .grid); 1000 slots reflow to fit.
+     --grid-cols only caps the card at the full 10-across Figma sheet. */
+  --grid-cols: 10;
+  --grid-max-width: calc(
+    var(--grid-cols) * var(--star-size) + (var(--grid-cols) - 1) *
+      var(--slot-gap-x) + 2 * var(--card-padding)
+  );
+}
+
+/* Small screens: stars keep their size but the sheet's whitespace tightens,
+   so ~4 columns fit where the full 60px padding would only allow 3. */
+@media (max-width: 640px) {
+  :root {
+    --card-padding: 24px;
+    --slot-gap-x: 20px;
+    --slot-gap-y: 16px;
+  }
+}
+
+/* Mobile: the one place stars scale — 70% size, and the printed number
+   scales with them (the riso print reads both tokens). */
+@media (max-width: 480px) {
+  :root {
+    --star-size: 52.5px;
+    --font-size-score: 7.7px;
+    --slot-gap-x: 12px;
+    --slot-gap-y: 10px;
+    --card-padding: 14px;
+  }
+
+  .screen {
+    padding: 0.5rem;
+  }
+}
+
+/* --------------------------------- base --------------------------------- */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+}
+
+/* ------------------------------- layout --------------------------------- */
+.screen {
+  min-height: 100vh;
+  padding: 1rem;
+}
+
+.screen--center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toolbar {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  max-width: var(--grid-max-width);
+  margin: 0 auto 1rem;
+}
+
+.toolbar__title {
+  margin: 0;
+  font-size: 1.4rem;
+  flex: 1;
+}
+
+.toolbar__count {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.7;
+}
+
+/* -------------------------------- grid ---------------------------------- */
+/* The sticker-sheet card. The visible artwork (pink paper, red edge, white
+   star knockouts, printed slot numbers) is a riso-printed bitmap rendered
+   into .grid__print by riso.ts — the card/border/score tokens above are its
+   source colors. The flat background here is only a fallback while the
+   print renders; the border is printed, not CSS. */
+.grid {
+  position: relative;
+  display: grid;
+  /* Fixed-size tracks: narrower screens get fewer stars per row, never
+     smaller stars. justify-content keeps the field centered when the
+     leftover width is less than one more column. */
+  grid-template-columns: repeat(auto-fill, var(--star-size));
+  justify-content: center;
+  gap: var(--slot-gap-y) var(--slot-gap-x);
+  max-width: var(--grid-max-width);
+  margin: 0 auto;
+  padding: var(--card-padding);
+  background: var(--color-card);
+  box-shadow: 0 4px 2px rgba(0, 0, 0, 0.25);
+}
+
+.grid__print {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* Slots are invisible hotspots over the printed star artwork. */
+.slot {
+  position: relative;
+  aspect-ratio: 1;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* Hovering an empty spot shows a punchcard-style perforation around it:
+   the Figma State=Hover dashed box (85px around the 75px star, so ~6.5%
+   outside the slot), drawn as round dots via zero-length dashes. */
+.slot__hover {
+  position: absolute;
+  left: -6.5%;
+  top: -6.5%;
+  width: 113%;
+  height: 113%;
+  overflow: visible;
+  opacity: 0;
+  pointer-events: none;
+}
+
+button.slot:not(.slot--filled):hover .slot__hover,
+button.slot:not(.slot--filled):focus-visible .slot__hover {
+  opacity: 1;
+}
+
+.slot__hover rect {
+  fill: none;
+  stroke: var(--color-border-hover);
+  stroke-width: var(--stroke-hover);
+  stroke-dasharray: 0 5;
+  stroke-linecap: round;
+}
+
+/* Hovering a placed star shows its title on a little paper tag. */
+.slot__label {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 3px 8px;
+  max-width: 20rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: var(--color-paper);
+  border: 1px solid var(--color-ink);
+  border-radius: 4px;
+  font-family: var(--font-star-number);
+  font-size: var(--font-size-score);
+  font-weight: 700;
+  color: var(--color-ink);
+  white-space: nowrap;
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.2);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+button.slot--filled:hover .slot__label,
+button.slot--filled:focus-visible .slot__label {
+  opacity: 1;
+}
+
+/* Placed gold-star sticker (Figma "State=Placed": 80px art overhanging the
+   75px cell). This element is what the holographic WebGL layer will
+   eventually replace/overlay with one global shine texture. */
+.slot__star {
+  position: absolute;
+  left: -3.33%;
+  top: -3.33%;
+  width: 106.67%;
+  height: 107.33%;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Holographic shine (WebGL2, see holo.ts). Viewport-fixed and click-through;
+   sits above the stickers, below the modal backdrop (z-index 10). */
+.holo {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* ------------------------------- controls ------------------------------- */
+.btn {
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 0.45rem 1rem;
+  border: 1px solid var(--color-ink);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--color-ink);
+  cursor: pointer;
+}
+
+.btn--primary {
+  background: var(--color-gold);
+  border-color: var(--color-gold);
+  color: var(--color-paper);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.field__label {
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+.field__input {
+  font-family: inherit;
+  font-size: 1rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--color-ink);
+}
+
+.field__input--textarea {
+  resize: vertical;
+}
+
+/* ------------------------------ landing/auth ---------------------------- */
+.landing {
+  text-align: center;
+  max-width: 26rem;
+}
+
+.landing__title {
+  font-size: 2.2rem;
+  margin: 0 0 0.5rem;
+}
+
+.landing__tagline {
+  margin: 0 0 1.5rem;
+  opacity: 0.8;
+}
+
+.auth {
+  width: min(22rem, 100%);
+}
+
+.auth__title {
+  margin: 0 0 1rem;
+}
+
+.auth__actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.auth__note {
+  font-size: 0.8rem;
+  opacity: 0.6;
+}
+
+/* -------------------------------- modal --------------------------------- */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10; /* above .slot__star, which creates its own stacking level */
+  background: rgba(51, 48, 43, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.modal {
+  background: var(--color-paper);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  width: min(24rem, 100%);
+}
+
+.modal__title {
+  margin: 0 0 1rem;
+}
+
+/* Edit mode: the heading is the star's name, with a small pencil beside it
+   that swaps the heading for a text box + confirm. */
+.modal__title--name {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  overflow-wrap: anywhere;
+}
+
+.modal__edit {
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  padding: 0.1rem 0.3rem;
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--color-ink);
+  opacity: 0.55;
+  cursor: pointer;
+}
+
+.modal__edit:hover {
+  opacity: 1;
+}
+
+.modal__name-edit {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+}
+
+.modal__name-edit .field__input {
+  flex: 1;
+  font-size: 1.17rem; /* match the h3 heading it replaces */
+  font-weight: 700;
+}
+
+.modal__error {
+  color: var(--color-error);
+  font-size: 0.9rem;
+}
+
+.modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.load-error {
+  max-width: var(--grid-max-width);
+  margin: 0 auto 1rem;
+  color: var(--color-error);
+}
